@@ -1,37 +1,40 @@
-from django.shortcuts import render
-from django.views import View
-from django.http import JsonResponse
-from django.core import serializers
-from .models import News
+from django.contrib.auth.models import User
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from . import models
+from .serializer import NewsSerializer
 
 
-class WebService(View):
+class NewsAPIView(APIView):
+    permission_classes = (IsAuthenticated, )
+
     def get(self, request):
-
-        qs = News.objects.all()
-        data = {
-            'news': serializers.serialize('python', qs),
-            'message': 'get sukses disimpan'
+        obj = models.News.objects.all().order_by('-created_at')
+        serializer = NewsSerializer(obj, many=True)
+        body_response = {
+            "data": serializer.data,
+            "message": "get all data success",
+            "code": 200
         }
-        return JsonResponse(data)
+        return Response(body_response)
 
 
-class WebService1(View):
-    def get(self, request):
-        news = list()
-        qs = News.objects.all()
+    def post(self, request):
+        serializer = NewsSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
 
-        for dt in qs:
-            news.append({
-                "title": dt.title,
-                # "author": dt.author.username,
-                "cover": dt.cover.url,
-                "category": dt.category,
-                "datetime": dt.created_at,
-            })
+            body_response = {
+                "data": serializer.data,
+                "message": "object created",
+                "code": 201
+            }
+            return Response(body_response)
 
-        data = {
-            'news': news,
-            'message': 'get sukses disimpan'
+        body_response = {
+            "data": None,
+            "message": "object invalid create",
+            "code": 400
         }
-        return JsonResponse(data)
+        return Response(body_response)
